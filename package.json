@@ -5,10 +5,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "eslint",
-    "contract:emit": "prisma contract emit"
+    "lint": "eslint"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
