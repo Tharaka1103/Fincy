@@ -8,6 +8,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { loginSchema } from "@/lib/validations/auth";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: process.env.AUTH_SECRET,
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   pages: {
