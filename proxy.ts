@@ -16,6 +16,13 @@ const protectedPaths = [
   "/api/v1",
 ];
 
+// Public routes under /api/v1 that do not require authentication
+const publicApiPaths = [
+  "/api/v1/auth/register",
+  "/api/v1/auth/forgot-password",
+  "/api/v1/auth/reset-password",
+];
+
 // Routes that should redirect authenticated users to dashboard
 const authPaths = ["/login", "/register", "/forgot-password"];
 
@@ -55,7 +62,7 @@ export async function proxy(request: NextRequest) {
   // ── Rate Limiting (auth routes only in proxy) ─────────────
   const isAuthApiRoute =
     pathname.startsWith("/api/auth/") ||
-    pathname === "/api/v1/auth/force-logout";
+    pathname.startsWith("/api/v1/auth/");
 
   if (isAuthApiRoute && request.method === "POST") {
     try {
@@ -91,7 +98,8 @@ export async function proxy(request: NextRequest) {
   }
 
   // ── Auth Protection ──────────────────────────────────────
-  const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
+  const isPublicApi = publicApiPaths.some((p) => pathname.startsWith(p));
+  const isProtected = !isPublicApi && protectedPaths.some((p) => pathname.startsWith(p));
   const isAuthPage = authPaths.some((p) => pathname.startsWith(p));
 
   if (!isProtected && !isAuthPage) {

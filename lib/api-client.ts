@@ -27,8 +27,14 @@ function buildUrl(
   path: string,
   params?: Record<string, string | number | boolean | undefined | null>
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  const url = new URL(`${baseUrl}/api/v1${path}`);
+  const base =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_APP_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const url = new URL(`/api/v1${normalizedPath}`, base);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
