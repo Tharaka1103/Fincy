@@ -68,11 +68,11 @@ export default async function DashboardPage() {
   const income = Number(incomeAgg._sum.amount ?? 0);
   const expense = Number(expenseAgg._sum.amount ?? 0);
   const prevExpense = Number(prevExpenseAgg._sum.amount ?? 0);
-  const totalBalance = accounts.reduce((sum: number, acc: { balance: any; }) => sum + Number(acc.balance), 0);
+  const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
 
   // Compute budget spending
   const budgetsWithSpent = await Promise.all(
-    budgets.map(async (b: { categoryId: any; startDate: any; endDate: any; amount: any; }) => {
+    budgets.map(async (b) => {
       const agg = await prisma.transaction.aggregate({
         _sum: { amount: true },
         where: {
@@ -102,7 +102,7 @@ export default async function DashboardPage() {
         name: userProfile?.name || session.user.name || "there",
         currency: userProfile?.currency || "USD",
       }}
-      accounts={accounts.map((a: { id: any; name: any; type: any; balance: any; currency: any; color: any; icon: any; isDefault: any; }) => ({
+      accounts={accounts.map((a) => ({
         id: a.id,
         name: a.name,
         type: a.type,
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
         expenseChange,
         month: format(now, "MMMM yyyy"),
       }}
-      recentTransactions={recentTxs.map((tx: { id: any; type: any; amount: any; currency: any; description: any; date: { toISOString: () => any; }; category: any; account: { name: any; }; }) => ({
+      recentTransactions={recentTxs.map((tx) => ({
         id: tx.id,
         type: tx.type,
         amount: Number(tx.amount),
@@ -130,7 +130,7 @@ export default async function DashboardPage() {
         category: tx.category,
         accountName: tx.account.name,
       }))}
-      upcomingReminders={upcomingReminders.map((r: { id: any; title: any; dueDate: { toISOString: () => any; }; amount: any; }) => ({
+      upcomingReminders={upcomingReminders.map((r) => ({
         id: r.id,
         title: r.title,
         dueDate: r.dueDate.toISOString(),
