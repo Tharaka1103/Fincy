@@ -1,0 +1,356 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// AUTH MODELS (NextAuth.js v5 / Auth.js)
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // hashed, null for OAuth users
+  currency      String    @default("USD")
+  locale        String    @default("en-US")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts           Account[]
+  sessions           Session[]
+  authenticators     Authenticator[]
+  financialAccounts  FinancialAccount[]
+  categories         Category[]
+  transactions       Transaction[]
+  budgets            Budget[]
+  reminders          Reminder[]
+  goals              Goal[]
+  auditLogs          AuditLog[]
+  bottomNavConfig    BottomNavConfig?
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  // Extended session info for single-device enforcement
+  deviceId     String?
+  deviceInfo   String?  @db.Text  // JSON: { browser, os, device }
+  ipAddress    String?
+  isActive     Boolean  @default(true)
+  lastSeenAt   DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Authenticator {
+  credentialID         String  @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, credentialID])
+  @@map("authenticators")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique @default(cuid())
+  expires   DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+// ============================================================
+// FINANCIAL MODELS
+// ============================================================
+
+enum FinancialAccountType {
+  CASH
+  BANK
+  CREDIT_CARD
+  INVESTMENT
+  SAVINGS
+  OTHER
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+  BOTH
+}
+
+enum RecurringInterval {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum BudgetPeriod {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum ReminderFrequency {
+  ONCE
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  ABANDONED
+}
+
+model FinancialAccount {
+  id          String               @id @default(cuid())
+  userId      String
+  name        String
+  type        FinancialAccountType @default(BANK)
+  balance     Decimal              @default(0) @db.Decimal(15, 2)
+  currency    String               @default("USD")
+  color       String               @default("#6366f1")
+  icon        String               @default("wallet")
+  isDefault   Boolean              @default(false)
+  isArchived  Boolean              @default(false)
+  description String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions      Transaction[] @relation("AccountTransactions")
+  toTransactions    Transaction[] @relation("ToAccountTransactions")
+
+  @@map("financial_accounts")
+}
+
+model Category {
+  id          String       @id @default(cuid())
+  userId      String?      // null = system default category
+  name        String
+  icon        String       @default("tag")
+  color       String       @default("#6366f1")
+  type        CategoryType @default(EXPENSE)
+  isSystem    Boolean      @default(false)
+  isArchived  Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@map("categories")
+}
+
+model Transaction {
+  id                String           @id @default(cuid())
+  userId            String
+  accountId         String
+  toAccountId       String?          // for transfers
+  categoryId        String?
+  type              TransactionType
+  amount            Decimal          @db.Decimal(15, 2)
+  currency          String           @default("USD")
+  exchangeRate      Decimal?         @db.Decimal(15, 6)  // if multi-currency
+  date              DateTime
+  description       String?
+  note              String?          @db.Text
+  tags              String[]         @default([])
+  isRecurring       Boolean          @default(false)
+  recurringInterval RecurringInterval?
+  recurringEndDate  DateTime?
+  parentId          String?          // for split transactions: points to parent
+  isSplit           Boolean          @default(false)
+  receiptUrl        String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account     FinancialAccount @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  toAccount   FinancialAccount? @relation("ToAccountTransactions", fields: [toAccountId], references: [id])
+  category    Category?        @relation(fields: [categoryId], references: [id])
+  parent      Transaction?     @relation("SplitTransactions", fields: [parentId], references: [id])
+  splits      Transaction[]    @relation("SplitTransactions")
+
+  @@index([userId, date])
+  @@index([userId, accountId])
+  @@index([userId, categoryId])
+  @@map("transactions")
+}
+
+model Budget {
+  id         String       @id @default(cuid())
+  userId     String
+  categoryId String
+  name       String
+  amount     Decimal      @db.Decimal(15, 2)
+  period     BudgetPeriod @default(MONTHLY)
+  startDate  DateTime
+  endDate    DateTime?
+  alertAt    Int          @default(80)  // alert when X% spent
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@map("budgets")
+}
+
+model Reminder {
+  id                String            @id @default(cuid())
+  userId            String
+  title             String
+  description       String?           @db.Text
+  amount            Decimal?          @db.Decimal(15, 2)
+  dueDate           DateTime
+  isRecurring       Boolean           @default(false)
+  frequency         ReminderFrequency @default(ONCE)
+  isDone            Boolean           @default(false)
+  isSnoozed         Boolean           @default(false)
+  snoozeUntil       DateTime?
+  isEmailNotif      Boolean           @default(true)
+  isInAppNotif      Boolean           @default(true)
+  lastNotifiedAt    DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dueDate])
+  @@map("reminders")
+}
+
+model Goal {
+  id            String     @id @default(cuid())
+  userId        String
+  name          String
+  description   String?    @db.Text
+  targetAmount  Decimal    @db.Decimal(15, 2)
+  currentAmount Decimal    @default(0) @db.Decimal(15, 2)
+  currency      String     @default("USD")
+  deadline      DateTime?
+  icon          String     @default("target")
+  color         String     @default("#6366f1")
+  status        GoalStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("goals")
+}
+
+// ============================================================
+// AUDIT & CONFIG MODELS
+// ============================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // e.g. "LOGIN", "LOGOUT", "FAILED_LOGIN", "PASSWORD_CHANGE", "SETTINGS_CHANGE", "CSV_EXPORT"
+  entity    String?  // e.g. "User", "Transaction"
+  entityId  String?
+  metadata  Json?    // additional context
+  ipAddress String?
+  userAgent String?  @db.Text
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}
+
+model BottomNavConfig {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  items     Json     // Array of { id, label, icon, href, enabled }
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bottom_nav_configs")
+}
