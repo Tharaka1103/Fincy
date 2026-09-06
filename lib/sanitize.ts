@@ -1,18 +1,30 @@
-import DOMPurify from "isomorphic-dompurify";
-
 /**
- * Sanitize a string by stripping HTML/JS injection attempts.
- * Returns a clean string safe for database storage.
+ * Sanitize a string by stripping HTML tags, control characters, and injection attempts.
+ * Safe for all serverless runtime environments (zero jsdom/browser dependency).
  */
 export function sanitizeString(input: string): string {
   if (typeof input !== "string") return "";
-  return DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }).trim();
+
+  return input
+    // Remove null bytes and dangerous control characters
+    .replace(/\0/g, "")
+    // Strip HTML tags entirely
+    .replace(/<[^>]*>?/gm, "")
+    // Remove javascript: pseudo protocol
+    .replace(/javascript\s*:/gi, "")
+    // Remove vbscript: pseudo protocol
+    .replace(/vbscript\s*:/gi, "")
+    // Remove on* event handler injection attempts
+    .replace(/on\w+\s*=/gi, "")
+    .trim();
 }
 
 /**
  * Sanitize an object's string values recursively.
  */
 export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
+  if (!obj || typeof obj !== "object") return obj;
+
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (typeof value === "string") {
