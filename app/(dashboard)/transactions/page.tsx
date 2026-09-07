@@ -26,7 +26,7 @@ export default async function TransactionsPage() {
     }),
     prisma.financialAccount.findMany({
       where: { userId: session.user.id, isArchived: false },
-      orderBy: { name: "asc" },
+      orderBy: [{ isDefault: "desc" }, { name: "asc" }],
     }),
     prisma.category.findMany({
       where: {

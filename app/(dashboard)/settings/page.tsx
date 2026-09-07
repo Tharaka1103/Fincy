@@ -51,18 +51,26 @@ export default async function SettingsPage() {
     lastSeenAt: s.lastSeenAt.toISOString(),
   }));
 
+  const defaultItems = [
+    { id: "accounts", label: "Accounts", icon: "wallet", href: "/accounts", enabled: true },
+    { id: "transactions", label: "Transactions", icon: "arrow-left-right", href: "/transactions", enabled: true },
+    { id: "dashboard", label: "Home", icon: "home", href: "/dashboard", enabled: true },
+    { id: "analytics", label: "Analytics", icon: "bar-chart-2", href: "/analytics", enabled: true },
+    { id: "settings", label: "Settings", icon: "settings", href: "/settings", enabled: true },
+  ];
+
+  const rawNav = bottomNavConfig?.items as any;
+  const initialNavItems = Array.isArray(rawNav)
+    ? rawNav
+    : (Array.isArray(rawNav?.items) ? rawNav.items : defaultItems);
+  const initialCenterButtonMode: "link" | "action" =
+    (!Array.isArray(rawNav) && rawNav?.centerButtonMode === "action") ? "action" : "link";
+
   return (
     <SettingsClient
       user={user!}
-      initialNavItems={
-        (bottomNavConfig?.items as any) || [
-          { id: "accounts", label: "Accounts", icon: "wallet", href: "/accounts", enabled: true },
-          { id: "transactions", label: "Transactions", icon: "arrow-left-right", href: "/transactions", enabled: true },
-          { id: "dashboard", label: "Dashboard", icon: "home", href: "/dashboard", enabled: true },
-          { id: "analytics", label: "Analytics", icon: "bar-chart-2", href: "/analytics", enabled: true },
-          { id: "settings", label: "Settings", icon: "settings", href: "/settings", enabled: true },
-        ]
-      }
+      initialNavItems={initialNavItems}
+      initialCenterButtonMode={initialCenterButtonMode}
       auditLogs={serializedAuditLogs}
       sessions={serializedSessions}
     />

@@ -20,7 +20,13 @@ export async function GET(request: NextRequest) {
     { id: "settings", label: "Settings", icon: "settings", href: "/settings", enabled: true },
   ];
 
-  return NextResponse.json({ items: config?.items ?? defaultItems });
+  // Items are stored as JSON; centerButtonMode is stored in the config as a separate field
+  // We use a wrapper approach: { items: [...], centerButtonMode: "link"|"action" }
+  const rawItems = config?.items as any;
+  const items = Array.isArray(rawItems) ? rawItems : (rawItems?.items ?? defaultItems);
+  const centerButtonMode = rawItems?.centerButtonMode ?? "link";
+
+  return NextResponse.json({ items, centerButtonMode });
 }
 
 // PUT /api/v1/settings/bottom-nav
@@ -38,11 +44,17 @@ export async function PUT(request: NextRequest) {
     );
   }
 
+  // Store as a wrapper object: { items: [...], centerButtonMode: "..." }
+  const storedData = {
+    items: parsed.data.items,
+    centerButtonMode: parsed.data.centerButtonMode ?? "link",
+  };
+
   const config = await prisma.bottomNavConfig.upsert({
     where: { userId: session.user.id },
-    create: { userId: session.user.id, items: parsed.data.items },
-    update: { items: parsed.data.items },
+    create: { userId: session.user.id, items: storedData as any },
+    update: { items: storedData as any },
   });
 
-  return NextResponse.json({ items: config.items });
+  return NextResponse.json({ items: parsed.data.items, centerButtonMode: parsed.data.centerButtonMode ?? "link" });
 }

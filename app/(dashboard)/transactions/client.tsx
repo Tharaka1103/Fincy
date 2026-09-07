@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import {
   Plus,
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Transaction {
   id: string;
@@ -109,9 +111,16 @@ export function TransactionsClient({
   const [selectedCategory, setSelectedCategory] = React.useState<string>("ALL");
 
   // Modal State
+  const searchParams = useSearchParams();
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (searchParams.get("add") === "true") {
+      setIsAddOpen(true);
+    }
+  }, [searchParams]);
 
   // Form State
   const [formData, setFormData] = React.useState({
@@ -436,8 +445,8 @@ export function TransactionsClient({
 
       {/* Add Transaction Dialog */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-border/40 rounded-2xl">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-border/40 rounded-2xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Spark className="w-5 h-5 text-primary" strokeWidth={2} />
               Add Transaction
@@ -447,7 +456,8 @@ export function TransactionsClient({
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreate} className="space-y-4 pt-2">
+          <ScrollArea className="max-h-[75vh]">
+          <form onSubmit={handleCreate} className="px-6 pb-6 space-y-4 pt-2">
             {/* Type selector */}
             <div className="grid grid-cols-3 gap-2 p-1 bg-background/50 rounded-xl border border-input/40">
               <button
@@ -510,12 +520,25 @@ export function TransactionsClient({
                   onValueChange={(val) => setFormData({ ...formData, accountId: val ?? "" })}
                 >
                   <SelectTrigger className="bg-background/50 border-input/60 rounded-xl text-xs">
-                    <SelectValue placeholder="Select account" />
+                    <SelectValue placeholder="Select account">
+                      {(() => {
+                        const acc = accounts.find(a => a.id === formData.accountId);
+                        return acc ? (
+                          <span className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: acc.color }} />
+                            {acc.name}
+                          </span>
+                        ) : "Select account";
+                      })()}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {accounts.map((acc) => (
                       <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name}
+                        <span className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: acc.color }} />
+                          {acc.name}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -530,14 +553,27 @@ export function TransactionsClient({
                     onValueChange={(val) => setFormData({ ...formData, toAccountId: val ?? "" })}
                   >
                     <SelectTrigger className="bg-background/50 border-input/60 rounded-xl text-xs">
-                      <SelectValue placeholder="Select destination" />
+                      <SelectValue placeholder="Select destination">
+                        {(() => {
+                          const acc = accounts.find(a => a.id === formData.toAccountId);
+                          return acc ? (
+                            <span className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: acc.color }} />
+                              {acc.name}
+                            </span>
+                          ) : "Select destination";
+                        })()}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {accounts
                         .filter((acc) => acc.id !== formData.accountId)
                         .map((acc) => (
                           <SelectItem key={acc.id} value={acc.id}>
-                            {acc.name}
+                            <span className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: acc.color }} />
+                              {acc.name}
+                            </span>
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -551,12 +587,25 @@ export function TransactionsClient({
                     onValueChange={(val) => setFormData({ ...formData, categoryId: val ?? "" })}
                   >
                     <SelectTrigger className="bg-background/50 border-input/60 rounded-xl text-xs">
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder="Select category">
+                        {(() => {
+                          const cat = categories.find(c => c.id === formData.categoryId);
+                          return cat ? (
+                            <span className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cat.color }} />
+                              {cat.icon} {cat.name}
+                            </span>
+                          ) : "Select category";
+                        })()}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
+                          <span className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cat.color }} />
+                            {cat.icon} {cat.name}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -619,6 +668,7 @@ export function TransactionsClient({
               </Button>
             </DialogFooter>
           </form>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>

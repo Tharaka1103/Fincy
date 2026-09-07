@@ -20,7 +20,7 @@ export default async function GoalsPage() {
     }),
     prisma.financialAccount.findMany({
       where: { userId: session.user.id, isArchived: false },
-      orderBy: { name: "asc" },
+      orderBy: [{ isDefault: "desc" }, { name: "asc" }],
     }),
   ]);
 

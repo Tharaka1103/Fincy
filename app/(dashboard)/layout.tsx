@@ -21,7 +21,13 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     where: { userId: session.user.id },
   });
 
-  const navItems = navConfig?.items as any[] | undefined;
+  const navItems = navConfig?.items as any;
+  // Support both old format (array) and new wrapped format ({ items: [...], centerButtonMode: "..." })
+  const parsedItems: any[] | undefined = Array.isArray(navItems)
+    ? navItems
+    : navItems?.items ?? undefined;
+  const centerButtonMode: "link" | "action" =
+    (!Array.isArray(navItems) && navItems?.centerButtonMode === "action") ? "action" : "link";
 
   return (
     <div className="min-h-screen flex flex-col mesh-bg">
@@ -29,7 +35,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
       <main className="flex-1 container mx-auto px-4 py-6 md:px-6 pb-24 md:pb-6 max-w-7xl">
         {children}
       </main>
-      <BottomNav items={navItems} />
+      <BottomNav items={parsedItems} centerButtonMode={centerButtonMode} />
     </div>
   );
 }

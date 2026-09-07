@@ -241,6 +241,7 @@ export const updateBottomNavSchema = z.object({
     .array(BottomNavItemSchema)
     .min(3, "At least 3 items required")
     .max(5, "Maximum 5 items allowed"),
+  centerButtonMode: z.enum(["link", "action"]).optional(),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

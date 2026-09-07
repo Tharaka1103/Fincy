@@ -17,6 +17,7 @@ export default async function ReportsPage() {
     prisma.financialAccount.findMany({
       where: { userId: session.user.id },
       select: { id: true, name: true },
+      orderBy: [{ isDefault: "desc" }, { name: "asc" }],
     }),
     prisma.category.findMany({
       where: {
