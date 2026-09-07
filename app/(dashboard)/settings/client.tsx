@@ -146,11 +146,19 @@ function InfoModal({
   onClose: () => void;
 }) {
   const isAction = mode === "action";
-  const [videoError, setVideoError] = React.useState(false);
+  // Stage: "webp" (try webp first) -> "video" (try mp4/webm next) -> "none" (fallback banner)
+  const [mediaStage, setMediaStage] = React.useState<"webp" | "video" | "none">("webp");
+  // Default to 1:1 square, automatically adjusts to media's natural aspect ratio upon loading
+  const [aspectRatio, setAspectRatio] = React.useState<number>(1);
 
   React.useEffect(() => {
-    setVideoError(false);
+    setMediaStage("webp");
+    setAspectRatio(1);
   }, [mode]);
+
+  const webpSrc = isAction ? "/videos/action-btn.webp" : "/videos/link-btn.webp";
+  const mp4Src = isAction ? "/videos/action-btn.mp4" : "/videos/link-btn.mp4";
+  const webmSrc = isAction ? "/videos/action-btn.webm" : "/videos/link-btn.webm";
 
   return (
     <Dialog open={!!mode} onOpenChange={(o) => !o && onClose()}>
@@ -167,8 +175,11 @@ function InfoModal({
             : "Information about Normal Link Mode"}
         </DialogDescription>
 
-        {/* Top: Full-bleed edge-to-edge Video Section */}
-        <div className="relative w-full aspect-video sm:aspect-[16/10] bg-black/80 shrink-0 overflow-hidden flex items-center justify-center border-b border-border/30 select-none">
+        {/* Top: Full-bleed Media Section with dynamic natural aspect ratio (default 1:1 square) */}
+        <div
+          className="relative w-full bg-black/90 shrink-0 overflow-hidden flex items-center justify-center border-b border-border/30 select-none max-h-[52vh]"
+          style={{ aspectRatio: `${aspectRatio}` }}
+        >
           {/* Close button ONLY in the top header/video area */}
           <button
             type="button"
@@ -179,25 +190,47 @@ function InfoModal({
             <Xmark className="w-4 h-4" strokeWidth={2.2} />
           </button>
 
-          {/* Video element - plays full width if uploaded */}
-          {!videoError && (
+          {/* 1. Animated WebP image (natively loops and displays in browsers) */}
+          {mediaStage === "webp" && (
+            <img
+              key={`img-${webpSrc}`}
+              src={webpSrc}
+              alt={isAction ? "Action Button Mode Demo" : "Normal Link Mode Demo"}
+              className="w-full h-full object-contain"
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                if (img.naturalWidth && img.naturalHeight) {
+                  setAspectRatio(img.naturalWidth / img.naturalHeight);
+                }
+              }}
+              onError={() => setMediaStage("video")}
+            />
+          )}
+
+          {/* 2. Video tag fallback if mp4 or webm is provided instead */}
+          {mediaStage === "video" && (
             <video
-              key={mode}
+              key={`vid-${mp4Src}`}
               autoPlay
               muted
               loop
               playsInline
-              className="w-full h-full object-cover"
-              onError={() => setVideoError(true)}
+              className="w-full h-full object-contain"
+              onLoadedMetadata={(e) => {
+                const vid = e.currentTarget;
+                if (vid.videoWidth && vid.videoHeight) {
+                  setAspectRatio(vid.videoWidth / vid.videoHeight);
+                }
+              }}
+              onError={() => setMediaStage("none")}
             >
-              <source src={isAction ? "/videos/action-btn.mp4" : "/videos/link-btn.mp4"} type="video/mp4" />
-              <source src={isAction ? "/videos/action-btn.webm" : "/videos/link-btn.webm"} type="video/webm" />
-              <source src={isAction ? "/videos/action-btn.webp" : "/videos/link-btn.webp"} />
+              <source src={mp4Src} type="video/mp4" />
+              <source src={webmSrc} type="video/webm" />
             </video>
           )}
 
-          {/* High-fidelity visual showcase fallback if video file isn't uploaded yet */}
-          {videoError && (
+          {/* 3. High-fidelity visual showcase fallback if neither file is uploaded yet */}
+          {mediaStage === "none" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-primary/20 via-background/60 to-muted/80 p-6 text-center">
               <div className="relative mb-3 flex items-center justify-center">
                 <div className="absolute w-20 h-20 rounded-full bg-primary/25 blur-2xl animate-pulse" />
@@ -215,10 +248,10 @@ function InfoModal({
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-background/80 backdrop-blur-md border border-border/60 text-[11px] font-semibold text-foreground shadow-sm">
                 <Play className="w-3.5 h-3.5 text-primary fill-primary" />
-                <span>Preview Video Demonstration</span>
+                <span>Preview Demonstration</span>
               </div>
               <p className="text-[10px] text-muted-foreground mt-2">
-                Upload <code className="text-primary font-mono">{isAction ? "action-btn.mp4" : "link-btn.mp4"}</code> to <code className="font-mono">/public/videos/</code>
+                Upload <code className="text-primary font-mono">{isAction ? "action-btn.webp" : "link-btn.webp"}</code> to <code className="font-mono">/public/videos/</code>
               </p>
             </div>
           )}
